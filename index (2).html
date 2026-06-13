@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10人狼人殺遊戲引擎 & 法官助手</title>
+    <style>
+        :root {
+            --bg-main: #0f0c1b;
+            --bg-card: #1d1830;
+            --primary: #8a2be2;
+            --accent-wolf: #e94560;
+            --accent-good: #00ffcc;
+            --accent-neutral: #ffcc00;
+            --text-light: #f1ebff;
+            --text-muted: #a29bfe;
+            --border-color: #3d3566;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-light);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: rgba(29, 24, 48, 0.95);
+            border: 2px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            margin-bottom: 30px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #fff;
+            text-shadow: 0 0 10px var(--primary);
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-bottom: 30px;
+        }
+
+        /* 導覽標籤 */
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 15px;
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: 2px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 10px 20px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn.active, .tab-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(138, 43, 226, 0.5);
+        }
+
+        .game-panel {
+            display: none;
+        }
+
+        .game-panel.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 區塊樣式 */
+        h2 {
+            color: var(--text-light);
+            border-left: 5px solid var(--primary);
+            padding-left: 10px;
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+
+        /* 角色介紹卡片網格 */
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .role-desc-card {
+            background: #151124;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 15px;
+            position: relative;
+        }
+
+        .role-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .badge-good { background: rgba(0, 255, 204, 0.2); color: var(--accent-good); border: 1px solid var(--accent-good); }
+        .badge-wolf { background: rgba(233, 69, 96, 0.2); color: var(--accent-wolf); border: 1px solid var(--accent-wolf); }
+        .badge-neutral { background: rgba(255, 204, 0, 0.2); color: var(--accent-neutral); border: 1px solid var(--accent-neutral); }
+
+        .role-desc-card h3 {
+            margin-bottom: 8px;
+            font-size: 16px;
+        }
+
+        .role-desc-card p {
+            font-size: 13px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* 輸入與設定表單 */
+        .setup-section {
+            background: #151124;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+
+        .player-input-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .player-input-box {
+            display: flex;
+            align-items: center;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 5px 10px;
+        }
+
+        .player-input-box span {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-right: 5px;
+            width: 35px;
+        }
+
+        .player-input-box input {
+            background: transparent;
+            border: none;
+            color: #fff;
+            width: 100%;
+            font-size: 14px;
+            outline: none;
+        }
+
+        /* 遊戲大按鈕 */
+        .btn-action {
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin: 20px auto;
+            background: linear-gradient(135deg, var(--primary), #5f27cd);
+            color: white;
+            border: none;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(138, 43, 226, 0.6);
+        }
+
+        /* 秘密檢視發牌卡片 */
+        .cards-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .werewolf-card {
+            height: 180px;
+            background: linear-gradient(135deg, #2c2547, #1d1830);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .werewolf-card:hover {
+            border-color: var(--primary);
+            transform: scale(1.03);
+        }
+
+        .werewolf-card.viewed {
+            border-style: solid;
+            background: #110d22;
+        }
+
+        .card-number {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .card-holder {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .card-status {
+            font-size: 12px;
+            color: var(--accent-neutral);
+            margin-top: 15px;
+            background: rgba(255, 204, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .card-status.done {
+            color: #4cd137;
+            background: rgba(76, 209, 55, 0.1);
+        }
+
+        /* 遮罩彈窗（防偷看） */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(5, 3, 10, 0.95);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            background: #1d1830;
+            border: 2px solid var(--primary);
+            border-radius: 20px;
+            max-width: 450px;
+            width: 100%;
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(138, 43, 226, 0.4);
+            animation: modalPop 0.3s ease;
+        }
+
+        @keyframes modalPop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .modal h3 {
+            font-size: 20px;
+            margin-bottom: 25px;
+            color: var(--text-muted);
+        }
+
+        .role-reveal {
+            font-size: 36px;
+            font-weight: bold;
+            margin: 20px 0;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px currentColor;
+        }
+
+        .modal-camp {
+            font-size: 14px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
+        .modal-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.6;
+            background: #120e22;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: left;
+            margin-bottom: 25px;
+            border-left: 4px solid var(--primary);
+        }
+
+        /* 法官助手介面 */
+        .form-select-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        @media (max-width: 600px) {
+            .form-select-group { grid-template-columns: 1fr; }
+        }
+
+        .select-box {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .select-box label {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .select-box select {
+            background: #151124;
+            border: 1px solid var(--border-color);
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .select-box select:focus {
+            border-color: var(--primary);
+        }
+
+        /* 結算報告區塊 */
+        .report-box {
+            background: #110d22;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 25px;
+            display: none;
+        }
+
+        .report-box.active {
+            display: block;
+        }
+
+        .report-title {
+            font-weight: bold;
+            font-size: 18px;
+            color: var(--accent-neutral);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .death-list {
+            margin-bottom: 15px;
+        }
+
+        .death-item {
+            background: rgba(233, 69, 96, 0.15);
+            border: 1px solid var(--accent-wolf);
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        .alert-item {
+            background: rgba(255, 204, 0, 0.15);
+            border: 1px solid var(--accent-neutral);
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #fff;
+            line-height: 1.5;
+        }
+
+        .game-over-banner {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
+        .camp-good-win { background: rgba(0, 255, 204, 0.2); color: var(--accent-good); border: 2px solid var(--accent-good); }
+        .camp-wolf-win { background: rgba(233, 69, 96, 0.2); color: var(--accent-wolf); border: 2px solid var(--accent-wolf); }
+
+        .rules-list {
+            padding-left: 20px;
+            color: var(--text-muted);
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .rules-list li {
+            margin-bottom: 10px;
+        }
+
+        .rules-list strong {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>🐺 10人闇夜狼人殺</h1>
+        <div class="subtitle">客製化配置版：含調停者與叛徒魔化機制</div>
+
+        <!-- 頁籤導覽 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('roles')">角色說明</button>
+            <button class="tab-btn" onclick="switchTab('deal')">建立遊戲/發牌</button>
+            <button class="tab-btn" onclick="switchTab('judge')">暗夜法官助手</button>
+        </div>
+
+        <!-- 頁籤 1: 角色說明 -->
+        <div id="panel-roles" class="game-panel active">
+            <h2>🔮 10人局專屬配置表</h2>
+            <div class="role-grid">
+                <!-- 狼人 -->
+                <div class="role-desc-card">
+                    <span class="role-badge badge-wolf">狼人陣營</span>
+                    <h3 style="color:var(--accent-wolf)">狼人 (3人)</h3>
+                    <p>每晚集體睜眼並共同決定殺害一名玩家。白天需隱匿身份，透過發言與投票放逐好人。當狼人人數大於或等於其餘所有存活玩家時獲勝。</p>
+                </div>
+                <!-- 平民 -->
+                <div class="role-desc-card">
+                    <span class="role-badge badge-good">好人陣營</span>
+                    <h3 style="color:var(--accent-good)">平民 (2人)</h3>
+                    <p>沒有特殊技能的常規村民。白天完全依賴邏輯推理、聽取發言以及進行投票，協助神職人員找出潛藏的狼人。</p>
+                </div>
+                <!-- 預言家 -->
+                <div class="role-desc-card">
+                    <span class="role-badge badge-good">好人陣營</span>
+                    <h3 style="color:var(--accent-good)">預言家 (1人)</h3>
+                    <p>每晚可以睜眼查驗一名玩家的真實陣營，法官會手勢告知其為「好人」或「狼人」（查驗叛徒在未魔化前顯示為好人）。</p>
+                </div>
+                <!-- 女巫 -->
+                <div class="role-desc-card">
+                    <span class="role-badge badge-good">好人陣營</span>
+                    <h3 style="color:var(--accent-good)">女巫 (1人)</h3>
+                    <p>擁有兩瓶藥水：解藥能復活當晚被狼人殺害的玩家；毒藥能在黑夜毒殺任意一人。每瓶藥限用一次，一晚通常只能使用一瓶藥。</p>
+                </div>
+                <!-- 獵人 -->
+                <div class="role-desc-card">
+                    <span class="role-badge badge-good">好人陣營</span>
+                    <h3 style="color:var(--accent-good)">獵人 (1人)</h3>
+                    <p>當死於狼人襲擊或在白天被投票放逐時，可以發動技能「翻牌帶人」，立即槍殺開槍指定的一名玩家。若被女巫毒死則無法開槍。</p>
+                </div>
+                <!-- 調停者 -->
+                <div class="role-desc-card">
+                    <span class="role-badge badge-good">好人陣營</span>
+                    <h3 style="color:var(--accent-good)">調停者 (1人)</h3>
+                    <p>全場遊戲限用一次技能。可在黑夜指定兩名玩家，使他們在接下來的白天投票階段中，<strong>絕對無法互相投票</strong>，用以保護關鍵好人或限制焦點位。</p>
+                </div>
+                <!-- 叛徒 -->
+                <div class="role-desc-card">
+                    <span class="role-badge badge-neutral">第三方/動態</span>
+                    <h3 style="color:var(--accent-neutral)">叛徒 (1人)</h3>
+                    <p>初始視為好人，不認識狼人。<strong>特殊魔化機制：</strong>若夜間被狼人襲擊且同時被女巫使用解藥救活，則正式叛變墮落為狼人陣營，此後與狼人夜間共同睜眼。隨最終所屬陣營決定勝負。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 頁籤 2: 建立遊戲與盲選發牌 -->
+        <div id="panel-deal" class="game-panel">
+            <h2>✍️ 步驟一：輸入參賽玩家名字</h2>
+            <div class="setup-section">
+                <div class="player-input-group">
+                    <div class="player-input-box"><span>1號</span><input type="text" id="p0" value="玩家一"></div>
+                    <div class="player-input-box"><span>2號</span><input type="text" id="p1" value="玩家二"></div>
+                    <div class="player-input-box"><span>3號</span><input type="text" id="p2" value="玩家三"></div>
+                    <div class="player-input-box"><span>4號</span><input type="text" id="p3" value="玩家四"></div>
+                    <div class="player-input-box"><span>5號</span><input type="text" id="p4" value="玩家五"></div>
+                    <div class="player-input-box"><span>6號</span><input type="text" id="p5" value="玩家六"></div>
+                    <div class="player-input-box"><span>7號</span><input type="text" id="p6" value="玩家七"></div>
+                    <div class="player-input-box"><span>8號</span><input type="text" id="p7" value="玩家八"></div>
+                    <div class="player-input-box"><span>9號</span><input type="text" id="p8" value="玩家九"></div>
+                    <div class="player-input-box"><span>10號</span><input type="text" id="p9" value="玩家十"></div>
+                </div>
+                <button class="btn-action" onclick="shuffleAndDeal()">🎲 洗牌並分發角色</button>
+            </div>
+
+            <div id="deck-section" style="display:none;">
+                <h2>🃏 步驟二：傳遞裝置盲選看牌（請依序點擊）</h2>
+                <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px; text-align:center;">點擊卡片會跳出獨立防窺視窗，確認後請關閉並交給下一位玩家。</p>
+                <div class="cards-container" id="cards-grid"></div>
+            </div>
+        </div>
+
+        <!-- 頁籤 3: 暗夜法官助手 -->
+        <div id="panel-judge" class="game-panel">
+            <h2>🌙 法官之眼：夜間行動記錄台</h2>
+            <div class="setup-section">
+                <div class="form-select-group">
+                    <div class="select-box">
+                        <label>1. 狼人今晚襲擊了誰？</label>
+                        <select id="act-kill"></select>
+                    </div>
+                    <div class="select-box">
+                        <label>2. 女巫是否使用解藥救人？</label>
+                        <select id="act-save">
+                            <option value="no">否（不救）</option>
+                            <option value="yes">是（使用解藥復活被殺者）</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-select-group">
+                    <div class="select-box">
+                        <label>3. 女巫是否使用毒藥？（選填）</label>
+                        <select id="act-poison"></select>
+                    </div>
+                    <div class="select-box">
+                        <label>4. 調停者選擇禁票的兩個人（選填）</label>
+                        <div style="display:flex; gap:5px;">
+                            <select id="act-mediator1" style="width:50%;"></select>
+                            <select id="act-mediator2" style="width:50%;"></select>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn-action" onclick="calculateNight()">🔮 計算夜間結算報告</button>
+            </div>
+
+            <!-- 報告輸出 -->
+            <div class="report-box" id="report-output">
+                <div class="report-title">📋 法官晨間宣告手冊</div>
+                <div id="report-deaths" class="death-list"></div>
+                <div id="report-alerts" class="death-list"></div>
+                <div id="game-status-check"></div>
+            </div>
+
+            <h2 style="margin-top:30px;">📜 白天常規結算規則參考</h2>
+            <ul class="rules-list">
+                <li><strong>獵人翻牌開槍：</strong>如果死亡名單中有獵人，且獵人是被「狼人殺害」或「白天投票放逐」，法官應允許獵人發動技能帶走一人。若被「女巫毒殺」，則不允許開槍。</li>
+                <li><strong>調停者限制：</strong>若白天公佈調停者成功禁票，法官需在投票環節監督被指定的兩人，確保他們沒有互投。</li>
+                <li><strong>勝利條件審查：</strong>
+                    <br>• 狼人陣營存活數 &ge; 其餘所有存活玩家總數 &rarr; <strong>狼人獲勝</strong>。
+                    <br>• 所有狼人（含魔化叛徒）皆出局 &rarr; <strong>好人獲勝</strong>。
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- 獨立防窺彈窗 -->
+    <div class="modal" id="card-modal">
+        <div class="modal-content">
+            <h3 id="modal-player-title">玩家身分確認</h3>
+            <div style="color: #666; font-size:12px;">安全隱私屏障，其餘玩家請迴避</div>
+            <div id="modal-role-reveal" class="role-reveal">?</div>
+            <div id="modal-camp-badge" class="modal-camp">陣營</div>
+            <div id="modal-role-desc" class="modal-desc">能力描述</div>
+            <button class="btn-action" style="margin-top:10px;" onclick="closeModal()">👁️ 我已記住，安全覆蓋卡片</button>
+        </div>
+    </div>
+
+    <script>
+        // 核心資料結構
+        const rolesConfig = [
+            { name: '狼人', camp: 'wolf', color: '#e94560', badge: 'badge-wolf', desc: '狼人陣營核心。黑夜共同睜眼擊殺一名玩家。白天需要透過偽裝混淆好人視聽。' },
+            { name: '狼人', camp: 'wolf', color: '#e94560', badge: 'badge-wolf', desc: '狼人陣營核心。黑夜共同睜眼擊殺一名玩家。白天需要透過偽裝混淆好人視聽。' },
+            { name: '狼人', camp: 'wolf', color: '#e94560', badge: 'badge-wolf', desc: '狼人陣營核心。黑夜共同睜眼擊殺一名玩家。白天需要透過偽裝混淆好人視聽。' },
+            { name: '平民', camp: 'good', color: '#00ffcc', badge: 'badge-good', desc: '無特殊技能。在白天利用邏輯和直覺分析場上發言，透過投票放逐狼人。' },
+            { name: '平民', camp: 'good', color: '#00ffcc', badge: 'badge-good', desc: '無特殊技能。在白天利用邏輯和直覺分析場上發言，透過投票放逐狼人。' },
+            { name: '預言家', camp: 'good', color: '#00ffcc', badge: 'badge-good', desc: '神職。每晚可以查驗一名玩家。法官會告知該玩家是好人還是狼人。' },
+            { name: '女巫', camp: 'good', color: '#00ffcc', badge: 'badge-good', desc: '神職。擁有一瓶解藥與一瓶毒藥。一晚只能用一瓶。毒死的人無法發動亡語技能。' },
+            { name: '獵人', camp: 'good', color: '#00ffcc', badge: 'badge-good', desc: '神職。被狼人殺死或白天被投票放逐時，可翻牌開槍帶走場上任意一名玩家。' },
+            { name: '調停者', camp: 'good', color: '#00ffcc', badge: 'badge-good', desc: '神職。全場限用一次。可在夜間指定兩名玩家，限制他們在白天無法互投。' },
+            { name: '叛徒', camp: 'neutral', color: '#ffcc00', badge: 'badge-neutral', desc: '特殊角色。初始為好人，不認識狼人。若被狼人襲擊且被女巫用解藥救活，則墮落轉化為狼人陣營，此後與狼人共同睁眼。' }
+        ];
+
+        let gameState = {
+            players: [], // { id, name, roleObj, viewed: false, status: 'alive'/'dead', dynamicCamp: 'good'/'wolf' }
+            traitorCorrupted: false
+        };
+
+        let activeCardIndex = null;
+
+        // 頁籤切換
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.game-panel').forEach(panel => panel.classList.remove('active'));
+            
+            // 找出點擊的按鈕並高亮
+            event.currentTarget.classList.add('active');
+            document.getElementById('panel-' + tabId).classList.add('active');
+        }
+
+        // 隨機洗牌演算 (Fisher-Yates)
+        function shuffle(array) {
+            let currentIndex = array.length, randomIndex;
+            while (currentIndex != 0) {
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
+        // 初始化洗牌發牌
+        function shuffleAndDeal() {
+            const tempRoles = shuffle([...rolesConfig]);
+            gameState.players = [];
+            gameState.traitorCorrupted = false;
+
+            for (let i = 0; i < 10; i++) {
+                const nameInput = document.getElementById(`p${i}`).value.trim();
+                const playerName = nameInput || `${i + 1}號玩家`;
+                gameState.players.push({
+                    id: i,
+                    name: playerName,
+                    roleObj: tempRoles[i],
+                    viewed: false,
+                    status: 'alive',
+                    dynamicCamp: tempRoles[i].camp === 'neutral' ? 'good' : tempRoles[i].camp
+                });
+            }
+
+            renderCards();
+            populateJudgeDropdowns();
+            document.getElementById('deck-section').style.display = 'block';
+            document.getElementById('report-output').style.display = 'none';
+            
+            // 自動滾動到卡片區
+            document.getElementById('deck-section').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 渲染發牌卡片網格
+        function renderCards() {
+            const grid = document.getElementById('cards-grid');
+            grid.innerHTML = '';
+
+            gameState.players.forEach((p, index) => {
+                const card = document.createElement('div');
+                card.className = `werewolf-card ${p.viewed ? 'viewed' : ''}`;
+                card.onclick = () => openCardModal(index);
+
+                card.innerHTML = `
+                    <div class="card-number">${index + 1} 號位</div>
+                    <div class="card-holder">${p.name}</div>
+                    <div class="card-status ${p.viewed ? 'done' : ''}">
+                        ${p.viewed ? '📁 已確認身分' : '🔒 點擊看牌'}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // 開啟安全彈窗
+        function openCardModal(index) {
+            activeCardIndex = index;
+            const p = gameState.players[index];
+            
+            document.getElementById('modal-player-title').innerText = `${index + 1} 號位 - ${p.name} 的專屬卡片`;
+            
+            const revealText = document.getElementById('modal-role-reveal');
+            revealText.innerText = p.roleObj.name;
+            revealText.style.color = p.roleObj.color;
+
+            const badge = document.getElementById('modal-camp-badge');
+            badge.className = `modal-camp ${p.roleObj.badge}`;
+            badge.innerText = p.roleObj.camp === 'good' ? '好人陣營' : (p.roleObj.camp === 'wolf' ? '狼人陣營' : '第三方 (動態)');
+
+            document.getElementById('modal-role-desc').innerText = p.roleObj.desc;
+            document.getElementById('card-modal').style.display = 'flex';
+        }
+
+        // 關閉安全彈窗
+        function closeModal() {
+            if (activeCardIndex !== null) {
+                gameState.players[activeCardIndex].viewed = true;
+                renderCards();
+            }
+            document.getElementById('card-modal').style.display = 'none';
+            activeCardIndex = null;
+        }
+
+        // 自動填入法官選單選項
+        function populateJudgeDropdowns() {
+            const killSelect = document.getElementById('act-kill');
+            const poisonSelect = document.getElementById('act-poison');
+            const med1 = document.getElementById('act-mediator1');
+            const med2 = document.getElementById('act-mediator2');
+
+            const dropdowns = [killSelect, poisonSelect, med1, med2];
+            
+            dropdowns.forEach((dd, i) => {
+                dd.innerHTML = '';
+                // 殺和毒允許空值(沒人死/沒用毒)
+                if (i <= 1) {
+                    const optEmpty = document.createElement('option');
+                    optEmpty.value = 'none';
+                    optEmpty.innerText = i === 0 ? '❌ 平安夜 / 無人受襲' : '❌ 不使用毒藥';
+                    dd.appendChild(optEmpty);
+                } else {
+                    const optEmpty = document.createElement('option');
+                    optEmpty.value = 'none';
+                    optEmpty.innerText = '❌ 不發動禁票';
+                    dd.appendChild(optEmpty);
+                }
+
+                gameState.players.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.id;
+                    opt.innerText = `[${p.id + 1}號] ${p.name} (${p.roleObj.name})`;
+                    dd.appendChild(opt);
+                });
+            });
+        }
+
+        // 核心法官演算法：計算暗夜結果與魔化機制
+        function calculateNight() {
+            if (gameState.players.length === 0) {
+                alert('請先前往「建立遊戲/發牌」分發角色身分！');
+                return;
+            }
+
+            const killVal = document.getElementById('act-kill').value;
+            const saveVal = document.getElementById('act-save').value;
+            const poisonVal = document.getElementById('act-poison').value;
+            const med1Val = document.getElementById('act-mediator1').value;
+            const med2Val = document.getElementById('act-mediator2').value;
+
+            let deaths = [];
+            let alertMsg = [];
+
+            let isKilled = (killVal !== 'none');
+            let killedPlayerId = isKilled ? parseInt(killVal) : null;
+            let isSaved = (saveVal === 'yes');
+            let poisonPlayerId = (poisonVal !== 'none') ? parseInt(poisonVal) : null;
+
+            // 判斷特殊魔化機制：叛徒被狼人襲擊且同時被女巫解藥救活
+            if (isKilled && isSaved && gameState.players[killedPlayerId].roleObj.name === '叛徒') {
+                if (!gameState.traitorCorrupted) {
+                    gameState.traitorCorrupted = true;
+                    gameState.players[killedPlayerId].dynamicCamp = 'wolf'; // 轉變為狼人陣營
+                    alertMsg.push(`⚠️ <strong>【法官高亮警告】</strong> 叛徒(${gameState.players[killedPlayerId].name})今晚遭受狼人襲擊並被女巫救起！<strong>叛徒已成功墮落魔化！</strong>今夜起，請安排他與狼人共同睜眼與行動。`);
+                }
+            }
+
+            // 計算真實死亡
+            // 1. 狼人殺死的人（若沒有被救）
+            if (isKilled && !isSaved) {
+                deaths.push(killedPlayerId);
+            }
+            // 2. 被毒藥毒死的人
+            if (poisonPlayerId !== null) {
+                deaths.push(poisonPlayerId);
+            }
+
+            // 去重（防止同一個人又被毒又被殺導致重覆顯示）
+            let uniqueDeaths = [...new Set(deaths)];
+
+            // 輸出晨間宣告名單
+            const deathsDiv = document.getElementById('report-deaths');
+            deathsDiv.innerHTML = '';
+            
+            if (uniqueDeaths.length === 0) {
+                deathsDiv.innerHTML = `<div class="death-item" style="background:rgba(76,209,55,0.15); border-color:#4cd137; color:#fff;">☀️ 昨晚是個平安夜，沒有人出局！</div>`;
+            } else {
+                uniqueDeaths.forEach(pid => {
+                    const p = gameState.players[pid];
+                    let suffix = '';
+                    if (p.roleObj.name === '獵人') {
+                        suffix = ' 📢 (他是獵人，請注意他白天是否宣布翻牌發動槍殺技能！)';
+                    }
+                    deathsDiv.innerHTML += `<div class="death-item">💀 昨晚出局的玩家為：<strong>${pid + 1}號位 - ${p.name}</strong> [身分: ${p.roleObj.name}]${suffix}</div>`;
+                });
+            }
+
+            // 輸出調停者狀態與特殊警告
+            const alertsDiv = document.getElementById('report-alerts');
+            alertsDiv.innerHTML = '';
+            
+            if (med1Val !== 'none' && med2Val !== 'none' && med1Val !== med2Val) {
+                const m1 = gameState.players[parseInt(med1Val)];
+                const m2 = gameState.players[parseInt(m2勝)];
+                alertsDiv.innerHTML += `<div class="alert-item">⚖️ <strong>調停者技能成立：</strong>白天投票階段，<strong>[${m1.id+1}號] ${m1.name}</strong> 與 <strong>[${m2.id+1}號] ${m2.name}</strong> 相互之間禁止投票！</div>`;
+            }
+
+            if (alertMsg.length > 0) {
+                alertMsg.forEach(msg => {
+                    alertsDiv.innerHTML += `<div class="alert-item" style="margin-top:8px;">${msg}</div>`;
+                });
+            }
+
+            // 實時更新玩家狀態存活數，做勝負預判（僅供法官參考）
+            // 複製一份狀態計算臨時存活
+            let aliveWolves = 0;
+            let aliveHumans = 0;
+            
+            gameState.players.forEach(p => {
+                let currentStatus = uniqueDeaths.includes(p.id) ? 'dead' : 'alive';
+                if (currentStatus === 'alive') {
+                    if (p.dynamicCamp === 'wolf') aliveWolves++;
+                    else aliveHumans++;
+                }
+            });
+
+            const statusCheckDiv = document.getElementById('game-status-check');
+            statusCheckDiv.className = '';
+            if (aliveWolves === 0) {
+                statusCheckDiv.className = 'game-over-banner camp-good-win';
+                statusCheckDiv.innerText = '🏆 勝負判定預測：場上已無活著的狼人，好人陣營獲勝！';
+            } else if (aliveWolves >= aliveHumans) {
+                statusCheckDiv.className = 'game-over-banner camp-wolf-win';
+                statusCheckDiv.innerText = '🩸 勝負判定預測：狼人人數已大於或等於其餘好人總數，狼人陣營獲勝！';
+            } else {
+                statusCheckDiv.className = 'game-over-banner';
+                statusCheckDiv.style.color = 'var(--text-muted)';
+                statusCheckDiv.innerText = `📊 當前局勢參考：存活狼人 ${aliveWolves} 人，存活好人 ${aliveHumans} 人。遊戲繼續。`;
+            }
+
+            document.getElementById('report-output').style.display = 'block';
+            document.getElementById('report-output').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
