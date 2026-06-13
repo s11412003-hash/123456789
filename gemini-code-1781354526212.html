@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>6人純前端狼人殺發牌器</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: #1a1a2e;
+            color: #e2e2e2;
+            text-align: center;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            background: #16213e;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+        h1 { color: #e94560; }
+        button {
+            background-color: #e94560;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: 0.3s;
+        }
+        button:hover { background-color: #ff6b81; }
+        .card {
+            font-size: 24px;
+            font-weight: bold;
+            padding: 40px;
+            margin: 20px 0;
+            background-color: #0f3460;
+            border-radius: 10px;
+            border: 2px dashed #e94560;
+            display: none;
+        }
+        .hidden { display: none; }
+        .instructions {
+            text-align: left;
+            background: #0f3460;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>6人狼人殺發牌器</h1>
+    <p>配置：狼人x2、預言家x1、女巫x1、村民x2</p>
+    <hr style="border-color: #53354a; margin: 20px 0;">
+
+    <div id="start-screen">
+        <div class="instructions">
+            <strong>遊玩方式（輪流看牌）：</strong><br>
+            1. 由一位玩家（或大家輪流）拿著這台裝置。<br>
+            2. 畫面上會顯示「請 1 號玩家準備」，該玩家就位後點擊「查看身分」。<br>
+            3. 看完身分並記住後，點擊「隱藏身分並換下一位」。<br>
+            4. 所有人都看完後，就可以由法官（或依照網頁提示）開始閉眼進入黑夜！
+        </div>
+        <button onclick="startGame()">開始遊戲（重新洗牌）</button>
+    </div>
+
+    <div id="game-screen" class="hidden">
+        <h2 id="player-prompt">請 1 號玩家準備</h2>
+        
+        <div id="role-card" class="card">
+            你的身分是：<br>
+            <span id="role-name" style="color: #ff6b81; font-size: 32px;">?</span>
+        </div>
+
+        <button id="action-btn" onclick="toggleCard()">查看身分</button>
+    </div>
+
+    <div id="end-screen" class="hidden">
+        <h2>發牌完畢！進入黑夜</h2>
+        <p>請大家閉上眼睛，由一位玩家主持或大家默契配合：</p>
+        <div class="instructions">
+            1. <strong>狼人請睜眼：</strong> 狼人互相確認隊友。<br>
+            2. <strong>預言家請睜眼：</strong> 預言家驗人（此時負責拿手機的人可以偷看剛剛記錄的答案，或者大家盲打）。<br>
+            3. <strong>女巫請睜眼：</strong> 女巫用藥。<br>
+            4. 天亮了！開始自由雄辯與投票。
+        </div>
+        <button onclick="restartGame()">重新一局</button>
+    </div>
+</div>
+
+<script>
+    // 6人配置身分
+    const defaultRoles = ['狼人', '狼人', '預言家', '女巫', '村民', '村民'];
+    let shuffledRoles = [];
+    let currentPlayer = 0;
+    let isCardVisible = false;
+
+    // 洗牌演算法 (Fisher-Yates Shuffle)
+    function shuffle(array) {
+        let currentIndex = array.length, randomIndex;
+        while (currentIndex != 0) {
+            randomIndex = Math.floor(Math.random() * currentIndex);
+            currentIndex--;
+            [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+        }
+        return array;
+    }
+
+    function startGame() {
+        shuffledRoles = shuffle([...defaultRoles]);
+        currentPlayer = 0;
+        isCardVisible = false;
+        
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        
+        updateScreen();
+    }
+
+    function updateScreen() {
+        document.getElementById('player-prompt').innerText = `請 ${currentPlayer + 1} 號玩家準備`;
+        document.getElementById('role-card').style.display = 'none';
+        document.getElementById('action-btn').innerText = '查看身分';
+        isCardVisible = false;
+    }
+
+    function toggleCard() {
+        const card = document.getElementById('role-card');
+        const btn = document.getElementById('action-btn');
+        const roleName = document.getElementById('role-name');
+
+        if (!isCardVisible) {
+            // 顯示身分
+            roleName.innerText = shuffledRoles[currentPlayer];
+            card.style.display = 'block';
+            btn.innerText = '隱藏身分並換下一位';
+            isCardVisible = true;
+        } else {
+            // 隱藏並切換到下一位
+            currentPlayer++;
+            if (currentPlayer < 6) {
+                updateScreen();
+            } else {
+                // 所有人看完牌了
+                document.getElementById('game-screen').classList.add('hidden');
+                document.getElementById('end-screen').classList.remove('hidden');
+            }
+        }
+    }
+
+    function restartGame() {
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+    }
+</script>
+
+</body>
+</html>
